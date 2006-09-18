@@ -1,0 +1,533 @@
+#!/usr/bin/env python
+
+# dtvcmd -- serial port control of a DirecTV receiver via Python
+# Copyright (C) 2006  Jim Storch
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# Control class for DTV units that use the old hex codes.
+# Should include: Hughes HIRD-B3, HIRD-B4, HIRD-D4, HIRD-E4;
+# Memorex MSD5000; Optimus 5100, RCA DRD102RW, DRD203RW, DRD303RA,
+# DRD502RB, DRD221RD, DRD222RD, DRD223RD, DRD225RD, DRD420RE, DRD430RE,
+# DRD440RE, DRD460RE, DRD480RE; Sony SAT-A1, SAT-A2, SAT-B2, SAT-B3,
+# SAT-A4, SAT-A50, SAT-B50, SAT-A55, SAT-B55, SAT-HD100; 
+# Uniden USS-100, UDS-200.  
+# Note: some do NOT perform reliable serial communications. 
+
+# Big thank-you to Kevin Timmerman and Andy Ellsworth for documenting 
+# the code values and compatiblity.  Please see Kevin's site at
+# www.dtvcontrol.com for good documentation, DTV utilities for 
+# MS Windows, or order control cables.
+
+# requires pyserial (pyserial.sourceforge.net)
+
+
+import serial
+import sys, getopt
+
+class Receiver:
+	def __init__(self, port, command_set=1):
+		self.ser = serial.Serial(port, 9600, xonxoff=0, rtscts=0, \
+			bytesize=8, parity='N', stopbits=1, timeout=None)
+		self.ser.flushInput()
+		self.ser.flushOutput()
+		if command_set == 2:
+			self.new_cmds=True
+		else:
+			self.new_cmds=False
+
+	def __response(self, c):
+		if c == '\xF0':
+			return 'Command OK'
+		if c == '\xF1':
+			return 'Bad Command'
+		if c == '\xF2':
+			return 'Processing Command'
+		if c == '\xF3':
+			return 'Input Timeout'
+		if c == '\xF4':
+			return 'Command Complete'
+		if c == '\xF5':
+			return 'Command Failed'
+		if c == '\xFB':
+			return 'Illegal Input'
+		if c == '\xFD':
+			return 'Buffer Underflow'
+		if c == '\xFF':
+			return 'Buffer Overflow'
+		return 'Unknown Error'
+
+	def __cmdStatus(self):
+		status = self.ser.read(1)
+		#if status != '\xF0':
+		#	print 'Error returned: ', self.__response(status) 
+
+	def getDateTime(self):
+		# Asks the unit for the date, time, and day of the week (Monday=1)
+		if self.new_cmds:
+			self.ser.write('\xFA\x91')
+		else:
+			self.ser.write('\xFA\x11')
+		ok = self.ser.read(1)
+		self.year  = ord(self.ser.read(1)) + 1993
+		self.month = ord(self.ser.read(1))
+		self.day   = ord(self.ser.read(1))
+		self.hour  = ord(self.ser.read(1))
+		self.min   = ord(self.ser.read(1))
+		self.sec   = ord(self.ser.read(1))
+		self.dow   = ord(self.ser.read(1))
+		ok = self.ser.read(1)
+
+	def powerOn(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\x82')	
+		else:
+			self.ser.write('\xFA\x02')
+		self.__cmdStatus()
+
+	def powerOff(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\x81')
+		else:
+			self.ser.write('\xFA\x01')
+		self.__cmdStatus()
+
+	def getSignalStrength(self):
+		self.ser.flushInput()
+		if self.new_cmds:
+			self.ser.write('\xFA\x90')
+		else:
+			self.ser.write('\xFA\x10')
+		ok = self.ser.read(1)
+		self.signalStrength = ord(self.ser.read(1))
+		ok = self.ser.read(1)
+		return self.signalStrength
+
+	def setChannel(self, channel):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA6%c%c\xFF\xFF' % ((channel / 256), (channel % 256)))
+		else:
+			self.ser.write('\xFA\x46%c%c' % ((channel / 256), (channel % 256)))
+	
+		self.__cmdStatus()
+
+	def getChannel(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\x87')
+		else:
+			self.ser.write('\xFA\x07')
+		ok = self.ser.read(1)
+		hb = ord(self.ser.read(1))
+		lb = ord(self.ser.read(1))
+		if self.new_cmds:
+			ok = self.ser.read(1)
+			ok = self.ser.read(1)
+		ok = self.ser.read(1)
+		return (hb * 256) + lb
+
+	def disableIR(self):
+    	# Disable the infra-red remote control.
+		if self.new_cmds:
+			self.ser.write('\xFA\x94')
+		else:
+			self.ser.write('\xFA\x14')
+		self.__cmdStatus()
+
+	def enableIR(self):
+		# Re-enable the infra-red remote control.
+		if self.new_cmds:
+			self.ser.write('\xFA\x93')
+		else:
+			self.ser.write('\xFA\x13')
+		self.__cmdStatus()
+
+	def showText(self, msg):
+		# Displays msg for 5 mins OR hideText() is called, 
+		# OR some manual display change.
+		# My DRD303SA ignores messages > 15 characters.
+		if self.new_cmds:
+			self.ser.write('\xFA\x4A')
+		else:
+			self.ser.write('\xFA\x4A')
+		self.ser.write(chr(len(msg)))
+		self.ser.write(msg)
+		self.ser.flushInput()
+        
+	def hideText(self):
+		# Removes displayText() message from screen.
+		if self.new_cmds:
+			self.ser.write('\xFA\x86')
+		else:
+			self.ser.write('\xFA\x06')
+		self.__cmdStatus()
+
+	# The following functions mimic pressing the corresponding
+	# buttons on the remote control.  
+	# There are more, but they didn't seem worth writing funtions for.
+
+	def channelUp(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xD2')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xD2')
+		self.__cmdStatus()
+
+	def channelDown(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xD3')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xD3')
+		self.__cmdStatus()
+
+	def info(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xC3')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xC3')
+		self.__cmdStatus()
+
+	def altAudio(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\x4F')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\x4F')
+		self.__cmdStatus()
+
+	def menuOK(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xF7')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xF7')
+		self.__cmdStatus()
+
+	def prevChannel(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xD8')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xD8')
+		self.__cmdStatus()
+
+	def up(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xA6')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xA6')
+		self.__cmdStatus()
+
+	def down(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xA7')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xA7')
+		self.__cmdStatus()
+
+	def right(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xA8')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xA8')
+		self.__cmdStatus()
+
+	def left(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xA9')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xA9')
+		self.__cmdStatus()
+
+	def guide(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xE5')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xE5')
+		self.__cmdStatus()
+
+	def zero(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xCF')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xCF')
+		self.__cmdStatus()
+
+	def one(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xCE')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xCE')
+		self.__cmdStatus()
+
+	def two(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xCD')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xCD')
+		self.__cmdStatus()
+
+	def three(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xCC')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xCC')
+		self.__cmdStatus()
+
+	def four(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xCB')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xCB')
+		self.__cmdStatus()
+
+	def five(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xCA')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xCA')
+		self.__cmdStatus()
+
+	def six(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xC9')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xC9')
+		self.__cmdStatus()
+
+	def seven(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xC8')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xC8')
+		self.__cmdStatus()
+
+	def eight(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xC7')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xC7')
+		self.__cmdStatus()
+
+	def nine(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xC6')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xC6')
+		self.__cmdStatus()
+
+	def dss(self):
+		if self.new_cmds:
+			self.ser.write('\xFA\xA5\x00\x00\xC5')
+		else:
+			self.ser.write('\xFA\x45\x00\x00\xC5')
+		self.__cmdStatus()
+
+
+if __name__ == "__main__":
+
+	banner = """dtvctrl.py v1.0 Copyright Jim Storch 2005\n"""
+	usage = """Usage: dtvctrl.py -d (serial device) [options]
+
+Options:
+  -h                  help (show this list)
+  -v                  verbose mode
+  -d {device}         serial device to use, i.e. /dev/ttyS0 
+  -n                  use the new command set, RCA DRD4xxRG/H and others 
+  -c {channel}        set receiver to channel n
+  -b {command}        mimic pressing a remote's button, valid options are:
+                        0-9, dss, info, guide, channel_up, channel_down,
+                        menu_select, up, down, left, right, menu_ok
+  -i [enable|disable] enable/disable the IR remote control input
+  -p [on|off]         power receiver on or off
+  -s "message"        show message (only like 15 chars)
+  -r                  remove message
+  -C                  returns current channel
+  -T                  returns receiver's datetime
+  -S                  returns receiver's signal strength\n"""
+	
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "CTSvhrnd:c:b:i:s:p:","help")
+	except getopt.GetoptError: 
+		# print help information and exit:
+		print "[dtvctrl.py] unrecognized command line option(s)"
+		print banner, usage
+		sys.exit(2)
+
+	# seems redudant, but loop once to get the port and verbosity
+	
+	serial_port = False
+	command_set = 1
+	verbose = False
+
+	for o, a in opts:
+		if o in ("-h", "--help"):
+			print banner, usage
+			sys.exit()
+		if o == '-d':
+			serial_port = a
+		if o == '-v':
+			verbose = True
+			print '[dtvctrl.py] verbose on'
+		if o == '-n':
+			command_set = 2
+			if verbose: print '[dtvctrl.py] Using new command set' 
+			
+			
+	if not serial_port:
+		print banner, "[dtvctrl.py] Please use '-d' to specify a serial device, '-h' for help."
+		sys.exit(2)
+
+	if verbose : print '[dtvctrl.py] Communicating on device %s' % serial_port
+     
+	rcvr=Receiver(serial_port, command_set)
+    
+    #now loop again to do commands 
+  	for o, a in opts:
+		
+		if o == '-c':
+			rcvr.setChannel(int(a))
+			if verbose : print '[dtvctrl.py] set channel %s' % a
+		
+		if o == '-i':
+			if a == 'enable':
+				rcvr.enableIR()
+				if verbose : print '[dtvctrl.py] IR enabled'
+			elif a == 'disable':
+				rcvr.disableIR()
+				if verbose : print '[dtvctrl.py] IR disabled'
+			else:
+				print "[dtvctrl.py] Option -i passed unknown parameter '%s'" % a
+				sys.exit(2)
+
+		if o == '-p':
+			if a == 'on':
+				rcvr.powerOn()
+				if verbose : print '[dtvctrl.py] power on'
+			elif a == 'off':
+				rcvr.powerOff()
+				if verbose : print '[dtvctrl.py] power off'
+			else:
+				print "[dtvctrl.py Option -p passed unknown parameter '%s'" % a
+				sys.exit(2) 
+
+		if o == '-s':
+			if a:
+				rcvr.showText(a)
+				if verbose : print '[dtvctrl.py] showing text: %s' % a
+	
+		if o == '-r':
+			rcvr.hideText()
+			if verbose : print '[dtvctrl.py] removing text'
+
+		if o == '-b':
+			if a == 'channel_up':
+				rcvr.channelUp()
+				if verbose : print '[dtvctrl.py] channel_up button'
+
+			elif a == 'channel_down':
+				rcvr.channelUp()
+				if verbose : print '[dtvctrl.py] channel_down button' 	
+ 	
+			elif a == 'info':
+				rcvr.info()
+				if verbose : print '[dtvctrl.py] info button'
+
+			elif a == 'alt_audio':
+				rcvr.altAudio()
+				if verbose : print '[dtvctrl.py] alt_audio button' 	
+ 	
+			elif a == 'menu_select':
+				rcvr.menuOK()
+				if verbose : print '[dtvctrl.py] menu_select button' 	
+				
+			elif a == 'prev_channel':
+				rcvr.prevChannel()
+				if verbose : print '[dtvctrl.py] prev_channel button' 	
+				
+			elif a == 'up':
+				rcvr.up()
+				if verbose : print '[dtvctrl.py] up button'
+
+			elif a == 'down':
+				rcvr.down()
+				if verbose : print '[dtvctrl.py] down button'
+
+			elif a == 'left':
+				rcvr.left()
+				if verbose : print '[dtv] left button'
+				
+			elif a == 'right':
+				rcvr.right()
+				if verbose : print '[dtvctrl.py] right button'
+
+			elif a == 'guide':
+				rcvr.guide()
+				if verbose : print '[dtvctrl.py] guide button'
+
+			elif a == 'dss':
+				rcvr.dss()
+				if verbose : print '[dtvctrl.py] dss button'
+
+			elif a == '0':
+				rcvr.zero()
+				if verbose : print '[dtvctrl.py] 0 button'
+
+			elif a == '1':
+				rcvr.one()
+				if verbose : print '[dtvctrl.py] 1 button'
+
+			elif a == '2':
+				rcvr.two()
+				if verbose : print '[dtvctrl.py] 2 button'
+
+			elif a == '3':
+				rcvr.three()
+				if verbose : print '[dtvctrl.py] 3 button'
+
+			elif a == '4':
+				rcvr.four()
+				if verbose : print '[dtvctrl.py] 4 button'
+
+			elif a == '5':
+				rcvr.five()
+				if verbose : print '[dtvctrl.py] 5 button'
+
+			elif a == '6':
+				rcvr.six()
+				if verbose : print '[dtvctrl.py] 6 button'
+
+			elif a == '7':
+				rcvr.seven()
+				if verbose : print '[dtvctrl.py] 7 button'
+
+			elif a == '8':
+				rcvr.eight()
+				if verbose : print '[dtvctrl.py] 8 button'
+
+			elif a == '9':
+				rcvr.nine()
+				if verbose : print '[dtvctrl.py] 9 button'
+			else:
+				print "[dtv] Option -d passed unknown parameter '%s'" % a
+				sys.exit(2) 
+
+		if o == '-C':
+			c=rcvr.getChannel()
+			if verbose : print '[dtvctrl.py] current channel:'
+			print c
+
+		if o == '-S':
+			s=rcvr.getSignalStrength()
+			if verbose : print '[dtvctrl.py] signal strength:'
+			print s
+
+		if o == '-T':
+			rcvr.getDateTime()
+			if verbose : print '[dtvctrl.py] receiver datetime:'
+			print "%.2d%.2d%.2d%.2d%.4d.%.2d " % (rcvr.month, rcvr.day, rcvr.hour, rcvr.min, rcvr.year, rcvr.sec)
+ 
