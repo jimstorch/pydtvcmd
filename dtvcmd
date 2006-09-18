@@ -372,17 +372,17 @@ Options:
 			serial_port = a
 		if o == '-v':
 			verbose = True
-			print '[dtvctrl.py] verbose on'
+			print '[dtvcmd] verbose on'
 		if o == '-n':
 			command_set = 2
-			if verbose: print '[dtvctrl.py] Using new command set' 
+			if verbose: print '[dtvcmd] Using new command set' 
 			
 			
 	if not serial_port:
-		print banner, "[dtvctrl.py] Please use '-d' to specify a serial device, '-h' for help."
+		print banner, "[dtvcmd] Please use '-d' to specify a serial device, '-h' for help."
 		sys.exit(2)
 
-	if verbose : print '[dtvctrl.py] Communicating on device %s' % serial_port
+	if verbose : print '[dtvcmd] Communicating on device %s' % serial_port
      
 	rcvr=Receiver(serial_port, command_set)
     
@@ -391,15 +391,15 @@ Options:
 		
 		if o == '-c':
 			rcvr.setChannel(int(a))
-			if verbose : print '[dtvctrl.py] set channel %s' % a
+			if verbose : print '[dtvcmd] set channel %s' % a
 		
 		if o == '-i':
 			if a == 'enable':
 				rcvr.enableIR()
-				if verbose : print '[dtvctrl.py] IR enabled'
+				if verbose : print '[dtvcmd] IR enabled'
 			elif a == 'disable':
 				rcvr.disableIR()
-				if verbose : print '[dtvctrl.py] IR disabled'
+				if verbose : print '[dtvcmd] IR disabled'
 			else:
 				print "[dtvctrl.py] Option -i passed unknown parameter '%s'" % a
 				sys.exit(2)
@@ -407,10 +407,10 @@ Options:
 		if o == '-p':
 			if a == 'on':
 				rcvr.powerOn()
-				if verbose : print '[dtvctrl.py] power on'
+				if verbose : print '[dtvcmd] power on'
 			elif a == 'off':
 				rcvr.powerOff()
-				if verbose : print '[dtvctrl.py] power off'
+				if verbose : print '[dtvcmd power off'
 			else:
 				print "[dtvctrl.py Option -p passed unknown parameter '%s'" % a
 				sys.exit(2) 
@@ -418,116 +418,116 @@ Options:
 		if o == '-s':
 			if a:
 				rcvr.showText(a)
-				if verbose : print '[dtvctrl.py] showing text: %s' % a
+				if verbose : print '[dtvcmd] showing text: %s' % a
 	
 		if o == '-r':
 			rcvr.hideText()
-			if verbose : print '[dtvctrl.py] removing text'
+			if verbose : print '[dtvcmd] removing text'
 
 		if o == '-b':
 			if a == 'channel_up':
 				rcvr.channelUp()
-				if verbose : print '[dtvctrl.py] channel_up button'
+				if verbose : print '[dtvcmd] channel_up button'
 
 			elif a == 'channel_down':
 				rcvr.channelUp()
-				if verbose : print '[dtvctrl.py] channel_down button' 	
+				if verbose : print '[dtvcmd] channel_down button' 	
  	
 			elif a == 'info':
 				rcvr.info()
-				if verbose : print '[dtvctrl.py] info button'
+				if verbose : print '[dtvcmd] info button'
 
 			elif a == 'alt_audio':
 				rcvr.altAudio()
-				if verbose : print '[dtvctrl.py] alt_audio button' 	
+				if verbose : print '[dtvcmd] alt_audio button' 	
  	
 			elif a == 'menu_select':
 				rcvr.menuOK()
-				if verbose : print '[dtvctrl.py] menu_select button' 	
+				if verbose : print '[dtvcmd] menu_select button' 	
 				
 			elif a == 'prev_channel':
 				rcvr.prevChannel()
-				if verbose : print '[dtvctrl.py] prev_channel button' 	
+				if verbose : print '[dtvcmd] prev_channel button' 	
 				
 			elif a == 'up':
 				rcvr.up()
-				if verbose : print '[dtvctrl.py] up button'
+				if verbose : print '[dtvcmd] up button'
 
 			elif a == 'down':
 				rcvr.down()
-				if verbose : print '[dtvctrl.py] down button'
+				if verbose : print '[dtvcmd] down button'
 
 			elif a == 'left':
 				rcvr.left()
-				if verbose : print '[dtv] left button'
+				if verbose : print '[dtvcmd] left button'
 				
 			elif a == 'right':
 				rcvr.right()
-				if verbose : print '[dtvctrl.py] right button'
+				if verbose : print '[dtvcmd] right button'
 
 			elif a == 'guide':
 				rcvr.guide()
-				if verbose : print '[dtvctrl.py] guide button'
+				if verbose : print '[dtvcmd] guide button'
 
 			elif a == 'dss':
 				rcvr.dss()
-				if verbose : print '[dtvctrl.py] dss button'
+				if verbose : print '[dtvcmd] dss button'
 
 			elif a == '0':
 				rcvr.zero()
-				if verbose : print '[dtvctrl.py] 0 button'
+				if verbose : print '[dtvcmd] 0 button'
 
 			elif a == '1':
 				rcvr.one()
-				if verbose : print '[dtvctrl.py] 1 button'
+				if verbose : print '[dtvcmd] 1 button'
 
 			elif a == '2':
 				rcvr.two()
-				if verbose : print '[dtvctrl.py] 2 button'
+				if verbose : print '[dtvcmd] 2 button'
 
 			elif a == '3':
 				rcvr.three()
-				if verbose : print '[dtvctrl.py] 3 button'
+				if verbose : print '[dtvcmd] 3 button'
 
 			elif a == '4':
 				rcvr.four()
-				if verbose : print '[dtvctrl.py] 4 button'
+				if verbose : print '[dtvcmd] 4 button'
 
 			elif a == '5':
 				rcvr.five()
-				if verbose : print '[dtvctrl.py] 5 button'
+				if verbose : print '[dtvcmd] 5 button'
 
 			elif a == '6':
 				rcvr.six()
-				if verbose : print '[dtvctrl.py] 6 button'
+				if verbose : print '[dtvcmd] 6 button'
 
 			elif a == '7':
 				rcvr.seven()
-				if verbose : print '[dtvctrl.py] 7 button'
+				if verbose : print '[dtvcmd] 7 button'
 
 			elif a == '8':
 				rcvr.eight()
-				if verbose : print '[dtvctrl.py] 8 button'
+				if verbose : print '[dtvcmd] 8 button'
 
 			elif a == '9':
 				rcvr.nine()
-				if verbose : print '[dtvctrl.py] 9 button'
+				if verbose : print '[dtvcmd] 9 button'
 			else:
 				print "[dtv] Option -d passed unknown parameter '%s'" % a
 				sys.exit(2) 
 
 		if o == '-C':
 			c=rcvr.getChannel()
-			if verbose : print '[dtvctrl.py] current channel:'
+			if verbose : print '[dtvcmd] current channel:'
 			print c
 
 		if o == '-S':
 			s=rcvr.getSignalStrength()
-			if verbose : print '[dtvctrl.py] signal strength:'
+			if verbose : print '[dtvcmd]signal strength:'
 			print s
 
 		if o == '-T':
 			rcvr.getDateTime()
-			if verbose : print '[dtvctrl.py] receiver datetime:'
+			if verbose : print '[dtvcmd] receiver datetime:'
 			print "%.2d%.2d%.2d%.2d%.4d.%.2d " % (rcvr.month, rcvr.day, rcvr.hour, rcvr.min, rcvr.year, rcvr.sec)
  
