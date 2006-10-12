@@ -330,8 +330,8 @@ class Receiver:
 
 if __name__ == "__main__":
 
-	banner = """dtvctrl.py v1.0 Copyright Jim Storch 2005\n"""
-	usage = """Usage: dtvctrl.py -d (serial device) [options]
+	banner = """dtvmd v1.0 Copyright Jim Storch 2006\n"""
+	usage = """Usage: dtvcmd -d (serial device) [options]
 
 Options:
   -h                  help (show this list)
