@@ -1,5 +1,3 @@
-# pydtvcmd
-Automatically exported from code.google.com/p/pydtvcmd
 INTRODUCTION
 'dtvcmd' is a program to send commands via your computer's serial port to a DirecTV(tm) satellite television receiver. With it, you can mimic the functionality of an infrared remote control. Not all DTV receivers support serial communications.
 
